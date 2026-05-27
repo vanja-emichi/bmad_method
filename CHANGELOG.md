@@ -6,6 +6,42 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 ---
+## [1.5.0] — 2026-05-07
+
+### State & Artifact Delivery Fixes
+
+Fixed 5 critical bugs in BMAD workflow completion steps that caused state corruption,
+stray summary files, and missing verification. All fixes use Agent Zero native `text_editor:patch`
+instead of destructive `cat >` heredocs.
+
+#### Bug Fixes
+
+- **Bug 1:** Persona state corruption — 8 workflow steps hardcoded subordinate persona
+- **Bug 2:** Stray summary files — celebration text lacked display-only guard (5 files)
+- **Bug 3:** Full state file overwrite — `cat >` heredoc destroyed entire state file
+- **Bug 4:** No post-creation verification — no artifact validation after delegation
+- **Bonus:** `$(date)` never expanded inside single-quoted heredoc
+
+#### Changes
+
+- Replace `cat > STATEEOF` heredocs with `text_editor:patch` in 8 workflow files
+- Add global celebration guard to `bmad-agent-shared.md`
+- Add display-only prefix to 5 completion step files
+- Add 3-step Post-Delegation Verification to BMad Master
+- Add YYYY-MM-DD format note to date placeholders
+
+#### Testing
+
+- 103 regression tests, 641 total passing, 0 failures
+- All 5 bugs have reproduction tests
+- 45 edge case tests added
+
+#### Ship Review
+
+- Security: PASS (0 Critical, 0 High)
+- Testing: PASS (641/641, 3 advisory gaps)
+- Code Quality: PASS (0 Critical, 0 High)
+
 
 ## [1.4.0] — 2026-05-02
 

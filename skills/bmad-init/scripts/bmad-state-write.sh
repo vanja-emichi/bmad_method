@@ -7,7 +7,7 @@ set -euo pipefail
 PROJECT_ROOT="${1:-/a0/usr/projects/a0_bmad_method}"
 CONTENT_FILE="${2:-}"
 STATE_FILE="$PROJECT_ROOT/.a0proj/instructions/02-bmad-state.md"
-TMP_FILE="$STATE_FILE.tmp.$$"
+TMP_FILE=$(mktemp "${STATE_FILE}.XXXXXX")
 
 if [ -z "$CONTENT_FILE" ]; then
   echo "Usage: $0 <project_root> <content_file>" >&2

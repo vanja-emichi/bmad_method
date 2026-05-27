@@ -121,25 +121,40 @@ PRD complete. Read fully and follow: `{project-root}/skills/bmad-init/core/tasks
 
 The polished PRD serves as the foundation for all subsequent product development activities. All design, architecture, and development work should trace back to the requirements and vision documented in this PRD - update it also as needed as you continue planning.
 
-## Workflow Completion — State Write (MANDATORY)
+## Workflow Completion — State Update (MANDATORY)
 
-Before returning control to the user, write the updated project state using `code_execution_tool` terminal:
+Before returning control to the user, update the project state file using `text_editor:patch`:
 
-~~~bash
-STATE_FILE="{project-root}/instructions/02-bmad-state.md"
-cat > "$STATE_FILE" << 'STATEEOF'
-## BMAD Active State
-- Phase: 2-planning
-- Persona: BMad John (Product Manager)
-- Active Artifact: prd.md
-- Last Updated: $(date +%Y-%m-%d)
-STATEEOF
-echo "State written: $STATE_FILE"
+1. Read `{project-root}/instructions/02-bmad-state.md` to determine current field values
+2. Apply a `text_editor:patch` with `patch_text` that updates ONLY these fields:
+   - `Phase` → `2-planning`
+   - `Active Artifact` → `prd.md`
+   - `Persona` → `BMad Master (Orchestrator)` **(ALWAYS reset to this value — never your own persona)**
+   - `Last Updated` → today's date (YYYY-MM-DD format)
+3. **CRITICAL:** Preserve ALL other content — initiative context, completed workflows, technical investigation log, issues, notes, tables. NEVER overwrite the entire file.
+
+**Example patch:**
+~~~
+*** Begin Patch
+*** Update File: {project-root}/instructions/02-bmad-state.md
+@@ - Phase:
+-- Phase: <current value>
++- Phase: 2-planning
+@@ - Active Artifact:
+-- Active Artifact: <current value>
++- Active Artifact: prd.md
+@@ - Persona:
+-- Persona: <current value>
++- Persona: BMad Master (Orchestrator)
+@@ - Last Updated:
+-- Last Updated: <current value>
++- Last Updated: <today>
+*** End Patch
 ~~~
 
 Valid phase values: `ready` | `1-analysis` | `2-planning` | `3-solutioning` | `4-implementation` | `bmb` | `cis`
 
-**Congratulations on completing the Product Requirements Document for {{project_name}}!** 🎉
+**Display to user (do NOT write to any file):** Congratulations on completing the Product Requirements Document for {{project_name}}! 🎉
 
 ---
 ## ✅ Step Complete

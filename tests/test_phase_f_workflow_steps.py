@@ -112,7 +112,7 @@ class TestStep04FinalValidation(unittest.TestCase):
         """YAML frontmatter must have name field."""
         self.assertIn("name: 'step-04-final-validation'", self.text)
 
-    def test_has_state_write_section(self):
-        """Must have State Write section (A0-specific)."""
-        self.assertIn('State Write', self.text,
-                      'step-04 missing State Write section')
+    def test_has_state_update_section(self):
+        """Must have State Update section (A0-specific)."""
+        self.assertIn('State Update', self.text,
+                      'step-04 missing State Update section')

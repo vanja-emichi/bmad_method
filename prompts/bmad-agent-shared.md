@@ -185,3 +185,4 @@ Adhere strictly to the tool calling JSON schema. Craft tool arguments with preci
 - **Never use relative paths**: Always construct absolute paths; relative paths break when the working directory changes
 - **Include rather than rewrite**: When referencing long file content in a response, use `§§include(/absolute/path/to/file)` instead of copying the text inline
 - **Update state after phase transitions**: After completing a deliverable that advances the project phase, update `02-bmad-state.md` to reflect the new phase, active artifact, and any decisions made
+- **Never write celebration/summary files**: When a workflow announces completion or says "Congratulations", DISPLAY the message to the user in your response text. Do NOT create any summary, celebration, or announcement files on disk. The only file writes allowed are the explicit artifact paths and state updates specified in the workflow.

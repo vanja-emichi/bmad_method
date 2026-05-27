@@ -48,10 +48,11 @@ def default_skills_root() -> Path:
     So the skills root is three parents up from this file.
     """
     skills_root = Path(__file__).resolve().parent.parent.parent
-    assert (skills_root / "bmad-customize").is_dir(), (
-        f"Layout guard failed: expected {skills_root / 'bmad-customize'} to exist "
-        f"(this script should live at {{skills_root}}/bmad-customize/scripts/list_customizable_skills.py)"
-    )
+    if not (skills_root / "bmad-customize").is_dir():
+        raise ValueError(
+            f"Layout guard failed: expected {skills_root / 'bmad-customize'} to exist "
+            f"(this script should live at {{skills_root}}/bmad-customize/scripts/list_customizable_skills.py)"
+        )
     return skills_root
 
 

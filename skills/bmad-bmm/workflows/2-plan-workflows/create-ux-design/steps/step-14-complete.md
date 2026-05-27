@@ -44,7 +44,7 @@ Complete the UX design workflow, update status files, and suggest next steps for
 ### 1. Announce Workflow Completion
 
 Inform user that the UX design is complete:
-"🎉 **UX Design Complete, {{user_name}}!**
+**Display to user (do NOT write to any file):** 🎉 **UX Design Complete, {{user_name}}!**
 
 I've successfully collaborated with you to create a comprehensive UX design specification for {{project_name}}.
 
@@ -162,26 +162,41 @@ Consider team capacity, timeline, and whether user validation is needed before i
 
 This UX design workflow is now complete. The specification serves as the foundation for all visual and development work. All design decisions, patterns, and requirements are documented to ensure consistent, accessible, and user-centered implementation.
 
-**Congratulations on completing the UX Design Specification for {{project_name}}!** 🎉
+**Display to user (do NOT write to any file):** **Congratulations on completing the UX Design Specification for {{project_name}}!** 🎉
 
 **Core Deliverables:**
 
 - ✅ UX Design Specification: `{planning_artifacts}/ux-design-specification.md`
 - ✅ Color Themes Visualizer: `{planning_artifacts}/ux-color-themes.html`
-## Workflow Completion — State Write (MANDATORY)
+## Workflow Completion — State Update (MANDATORY)
 
-Before returning control to the user, write the updated project state using `code_execution_tool` terminal:
+Before returning control to the user, update the project state file using `text_editor:patch`:
 
-~~~bash
-STATE_FILE="{project-root}/instructions/02-bmad-state.md"
-cat > "$STATE_FILE" << 'STATEEOF'
-## BMAD Active State
-- Phase: 3-solutioning
-- Persona: BMad Sally (UX Designer)
-- Active Artifact: ux-design-specification.md
-- Last Updated: $(date +%Y-%m-%d)
-STATEEOF
-echo "State written: $STATE_FILE"
+1. Read `{project-root}/instructions/02-bmad-state.md` to determine current field values
+2. Apply a `text_editor:patch` with `patch_text` that updates ONLY these fields:
+   - `Phase` → `3-solutioning`
+   - `Active Artifact` → `ux-design-specification.md`
+   - `Persona` → `BMad Master (Orchestrator)` **(ALWAYS reset to this value — never your own persona)**
+   - `Last Updated` → today's date (YYYY-MM-DD format)
+3. **CRITICAL:** Preserve ALL other content — initiative context, completed workflows, technical investigation log, issues, notes, tables. NEVER overwrite the entire file.
+
+**Example patch:**
+~~~
+*** Begin Patch
+*** Update File: {project-root}/instructions/02-bmad-state.md
+@@ - Phase:
+-- Phase: <current value>
++- Phase: 3-solutioning
+@@ - Active Artifact:
+-- Active Artifact: <current value>
++- Active Artifact: ux-design-specification.md
+@@ - Persona:
+-- Persona: <current value>
++- Persona: BMad Master (Orchestrator)
+@@ - Last Updated:
+-- Last Updated: <current value>
++- Last Updated: <today>
+*** End Patch
 ~~~
 
 Valid phase values: `ready` | `1-analysis` | `2-planning` | `3-solutioning` | `4-implementation` | `bmb` | `cis`

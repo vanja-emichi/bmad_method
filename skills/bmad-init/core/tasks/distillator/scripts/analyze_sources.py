@@ -34,6 +34,9 @@ import re
 import sys
 from pathlib import Path
 
+# Glob pattern validation: restrict to safe characters
+_SAFE_GLOB_RE = re.compile(r'^[\w\-./\*\?\[\]\{\}]+$')
+
 # Extensions to include when scanning folders
 INCLUDE_EXTENSIONS = {".md", ".txt", ".yaml", ".yml", ".json"}
 
@@ -79,6 +82,19 @@ GROUP_PATTERNS = [
 ]
 
 
+def _validate_glob_pattern(pattern: str) -> str:
+    """Validate a glob pattern for safety. Reject path traversal and absolute paths."""
+    if not pattern:
+        return pattern
+    if pattern.startswith('/') or '..' in pattern.split('/'):
+        print(f"Warning: rejected unsafe glob pattern (traversal/absolute): {pattern}", file=sys.stderr)
+        return ''
+    if not _SAFE_GLOB_RE.match(pattern):
+        print(f"Warning: rejected unsafe glob pattern (invalid chars): {pattern}", file=sys.stderr)
+        return ''
+    return pattern
+
+
 def resolve_inputs(inputs: list[str]) -> list[Path]:
     """Resolve input arguments to a flat list of file paths."""
     files: list[Path] = []
@@ -95,7 +111,8 @@ def resolve_inputs(inputs: list[str]) -> list[Path]:
                         files.append(fp.resolve())
         else:
             # Try as glob
-            matches = glob.glob(inp, recursive=True)
+            safe_pattern = _validate_glob_pattern(inp)
+            matches = glob.glob(safe_pattern, recursive=True) if safe_pattern else []
             for m in sorted(matches):
                 mp = Path(m)
                 if mp.is_file() and mp.suffix.lower() in INCLUDE_EXTENSIONS:

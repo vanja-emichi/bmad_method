@@ -159,22 +159,37 @@ Product Brief complete. Read fully and follow: `{project-root}/skills/bmad-init/
 
 This product brief is now complete and serves as the strategic foundation for the entire product lifecycle. All subsequent design, architecture, and development work should trace back to the vision, user needs, and success criteria documented in this brief.
 
-## Workflow Completion — State Write (MANDATORY)
+## Workflow Completion — State Update (MANDATORY)
 
-Before returning control to the user, write the updated project state using `code_execution_tool` terminal:
+Before returning control to the user, update the project state file using `text_editor:patch`:
 
-~~~bash
-STATE_FILE="{project-root}/instructions/02-bmad-state.md"
-cat > "$STATE_FILE" << 'STATEEOF'
-## BMAD Active State
-- Phase: 2-planning
-- Persona: BMad Mary (Business Analyst)
-- Active Artifact: product-brief.md
-- Last Updated: $(date +%Y-%m-%d)
-STATEEOF
-echo "State written: $STATE_FILE"
+1. Read `{project-root}/instructions/02-bmad-state.md` to determine current field values
+2. Apply a `text_editor:patch` with `patch_text` that updates ONLY these fields:
+   - `Phase` → `2-planning`
+   - `Active Artifact` → `product-brief.md`
+   - `Persona` → `BMad Master (Orchestrator)` **(ALWAYS reset to this value — never your own persona)**
+   - `Last Updated` → today's date (YYYY-MM-DD format)
+3. **CRITICAL:** Preserve ALL other content — initiative context, completed workflows, technical investigation log, issues, notes, tables. NEVER overwrite the entire file.
+
+**Example patch:**
+~~~
+*** Begin Patch
+*** Update File: {project-root}/instructions/02-bmad-state.md
+@@ - Phase:
+-- Phase: <current value>
++- Phase: 2-planning
+@@ - Active Artifact:
+-- Active Artifact: <current value>
++- Active Artifact: product-brief.md
+@@ - Persona:
+-- Persona: <current value>
++- Persona: BMad Master (Orchestrator)
+@@ - Last Updated:
+-- Last Updated: <current value>
++- Last Updated: <today>
+*** End Patch
 ~~~
 
 Valid phase values: `ready` | `1-analysis` | `2-planning` | `3-solutioning` | `4-implementation` | `bmb` | `cis`
 
-**Congratulations on completing the Product Brief for {{project_name}}!** 🎉
+**Display to user (do NOT write to any file):** Congratulations on completing the Product Brief for {{project_name}}! 🎉

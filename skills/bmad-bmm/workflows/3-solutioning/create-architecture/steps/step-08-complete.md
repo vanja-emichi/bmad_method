@@ -73,25 +73,40 @@ Upon Completion of task output: offer to answer any questions about the Architec
 
 This is the final step of the Architecture workflow. The user now has a complete, validated architecture document ready for AI agent implementation.
 
-## Workflow Completion — State Write (MANDATORY)
+## Workflow Completion — State Update (MANDATORY)
 
-Before returning control to the user, write the updated project state using `code_execution_tool` terminal:
+Before returning control to the user, update the project state file using `text_editor:patch`:
 
-~~~bash
-STATE_FILE="{project-root}/instructions/02-bmad-state.md"
-cat > "$STATE_FILE" << 'STATEEOF'
-## BMAD Active State
-- Phase: 3-solutioning
-- Persona: BMad Winston (Architect)
-- Active Artifact: architecture.md
-- Last Updated: $(date +%Y-%m-%d)
-STATEEOF
-echo "State written: $STATE_FILE"
+1. Read `{project-root}/instructions/02-bmad-state.md` to determine current field values
+2. Apply a `text_editor:patch` with `patch_text` that updates ONLY these fields:
+   - `Phase` → `3-solutioning`
+   - `Active Artifact` → `architecture.md`
+   - `Persona` → `BMad Master (Orchestrator)` **(ALWAYS reset to this value — never your own persona)**
+   - `Last Updated` → today's date (YYYY-MM-DD format)
+3. **CRITICAL:** Preserve ALL other content — initiative context, completed workflows, technical investigation log, issues, notes, tables. NEVER overwrite the entire file.
+
+**Example patch:**
+~~~
+*** Begin Patch
+*** Update File: {project-root}/instructions/02-bmad-state.md
+@@ - Phase:
+-- Phase: <current value>
++- Phase: 3-solutioning
+@@ - Active Artifact:
+-- Active Artifact: <current value>
++- Active Artifact: architecture.md
+@@ - Persona:
+-- Persona: <current value>
++- Persona: BMad Master (Orchestrator)
+@@ - Last Updated:
+-- Last Updated: <current value>
++- Last Updated: <today>
+*** End Patch
 ~~~
 
 Valid phase values: `ready` | `1-analysis` | `2-planning` | `3-solutioning` | `4-implementation` | `bmb` | `cis`
 
-The architecture will serve as the single source of truth for all technical decisions, ensuring consistent implementation across the entire project development lifecycle.
+**Display to user (do NOT write to any file):** The architecture will serve as the single source of truth for all technical decisions, ensuring consistent implementation across the entire project development lifecycle.
 
 ---
 ## ✅ Step Complete

@@ -1,278 +1,406 @@
-# BMAD Alignment Fix Sprint — TODO
+# BMAD State & Artifact Delivery Fixes — TODO
 
-**Source of truth:** `SPEC.md` (1,099 lines)
+**Source of truth:** `SPEC.md` (1,087 lines)
 **Branch:** `develop` → `main` on `/ship`
-**Total subtasks:** 33 across 6 bundles
+**Total tasks:** 13 (T0–T12)
 
 ---
 
-## Phase 1: Foundation (Parallel Tracks)
+## Phase 1: Pre-flight
 
 ---
 
-## Bundle 1: CSV → YAML Migration [P0] — Effort: M (1-2 days)
+### T0: Pre-flight Verification
+- [x] **T0.1** Grep all 8 Fix A target files for `cat >.*STATEEOF` — confirm bug pattern present at expected lines
+- [x] **T0.2** Grep Fix B1 target file `prompts/bmad-agent-shared.md` — confirm line 187 contains `Update state after phase transitions`
+- [x] **T0.3** Grep Fix C1 target file `agents/bmad-master/prompts/agent.system.main.communication_additions.md` — confirm line 161 contains `Everything else → mandatory routing lookup`
+- [x] **T0.4** Run existing test suite baseline — confirm all tests pass before changes
 
-- [x] 1.1 Define module.yaml schema
-  - Acceptance: Schema validates against all 5 CSVs with zero data loss; 13 CSV columns mapped to YAML fields
-  - Verify: `python3 scripts/archive/csv_to_yaml_converter.py --dry-run`
-  - Files: `scripts/archive/csv_to_yaml_converter.py` (new)
+**Verification:**
+~~~bash
+cd /a0/usr/projects/a0_bmad_method
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/4-implementation/sprint-planning/checklist.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/4-implementation/dev-story/checklist.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md
+grep -n 'cat >.*STATEEOF' skills/bmad-bmm/workflows/bmad-quick-flow/quick-spec/workflow.md
+python -m pytest tests/ -v --tb=short 2>&1 | tail -5
+~~~
 
-- [x] 1.2 Convert all 5 module-help.csv files to module.yaml
-  - Acceptance: All 5 module.yaml files created; row counts match CSVs; yaml.safe_load() succeeds on each
-  - Verify: `for f in skills/*/module.yaml skills/bmad-init/core/module.yaml; do python -c "import yaml; yaml.safe_load(open('$f'))" && echo "OK $f" || echo "FAIL $f"; done`
-  - Files: `skills/bmad-init/core/module.yaml`, `skills/bmad-bmm/module.yaml`, `skills/bmad-tea/module.yaml`, `skills/bmad-cis/module.yaml`, `skills/bmad-bmb/module.yaml`
-  - Note: Init CSV is special — entries merged into appropriate module.yaml files
+**Dependencies:** None
+**Scope:** XS (read-only checks)
 
-- [x] 1.3 Rewrite routing extension for YAML
-  - Acceptance: Zero import csv or csv. references; yaml.safe_load() used; routing manifest output byte-identical to CSV version; mtime caching works
-  - Verify: `grep -r 'import csv' extensions/python/message_loop_prompts_after/_80_bmad_routing_manifest.py && echo 'FAIL' || echo 'OK'
-  - Files: `extensions/python/message_loop_prompts_after/_80_bmad_routing_manifest.py` (rewrite)
+---
 
-- [x] 1.4 Update and add tests for YAML
-  - Acceptance: All existing routing tests pass with YAML; new YAML-specific tests cover parsing, caching, error handling; test count >= 300
-  - Verify: `python -m pytest tests/test_extension_80.py tests/test_core_yaml_schema.py tests/test_yaml_routing.py tests/test_migration_csv_to_yaml.py -v`
-  - Files: `tests/test_extension_80.py` (update), `tests/test_core_csv_schema.py` → `tests/test_core_yaml_schema.py` (rename), `tests/test_yaml_routing.py` (new), `tests/test_migration_csv_to_yaml.py` (new)
-- [x] 1.5 Delete CSV files and clean up references
-  - Acceptance: grep -r 'module-help' returns zero results; no import csv in routing extension
-  - Verify: `grep -r 'module-help' . --include='*.py' --include='*.md' --include='*.sh'`
-  - Files: DELETE `skills/bmad-init/module-help.csv`, `skills/bmad-bmm/module-help.csv`, `skills/bmad-tea/module-help.csv`, `skills/bmad-cis/module-help.csv`, `skills/bmad-bmb/module-help.csv`
+## Phase 2: Fix A — A-only Files (4 tasks, parallel after T0)
 
-- [x] 1.6 Write ADR-0010 and supersede ADR-0001
-  - Acceptance: ADR-0010 exists with status Accepted; ADR-0001 header updated to Status: Superseded by ADR-0010
-  - Verify: `head -5 docs/adr/0010-yaml-canonical-routing.md && head -5 docs/adr/0001-csv-canonical-routing.md`
-  - Files: `docs/adr/0010-yaml-canonical-routing.md` (new), `docs/adr/0001-csv-canonical-routing.md` (update header)
+---
 
-### Checkpoint A: After Bundle 1
-```
-python -m pytest tests/test_extension_80.py -v
-for f in skills/*/module.yaml skills/bmad-init/core/module.yaml; do
-  python -c "import yaml; yaml.safe_load(open('$f'))" && echo "OK $f" || echo "FAIL $f"
+### T1: Fix A4 — step-14-complete.md (UX Design)
+- [x] **T1.1** Read `skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md` lines 165–190 to confirm exact BEFORE text
+- [x] **T1.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 171–185) with `text_editor:patch` instructions: Phase=`3-solutioning`, Artifact=`ux-design-specification.md`, Persona=`BMad Master (Orchestrator)`
+- [x] **T1.3** Verify no `cat >` heredoc remains; verify `text_editor:patch` instructions present; verify correct Phase/Artifact/Persona values
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `3-solutioning`, Active Artifact: `ux-design-specification.md`, Persona: `BMad Master (Orchestrator)`
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md  # → ≥1
+grep '3-solutioning' skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md | head -1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, mechanical replacement)
+
+---
+
+### T2: Fix A5 — sprint-planning/checklist.md
+- [x] **T2.1** Read `skills/bmad-bmm/workflows/4-implementation/sprint-planning/checklist.md` lines 28–55 to confirm exact BEFORE text
+- [x] **T2.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 34–48) with `text_editor:patch` instructions: Phase=`4-implementation`, Artifact=`sprint-status.yaml`, Persona=`BMad Master (Orchestrator)`
+- [x] **T2.3** Verify no `cat >` heredoc remains; verify `text_editor:patch` instructions present; verify correct Phase/Artifact/Persona values
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `4-implementation`, Active Artifact: `sprint-status.yaml`, Persona: `BMad Master (Orchestrator)`
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/4-implementation/sprint-planning/checklist.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/4-implementation/sprint-planning/checklist.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/4-implementation/sprint-planning/checklist.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, mechanical replacement)
+
+---
+
+### T3: Fix A6 — dev-story/checklist.md
+- [x] **T3.1** Read `skills/bmad-bmm/workflows/4-implementation/dev-story/checklist.md` lines 74–100 to confirm exact BEFORE text
+- [x] **T3.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 80–94) with `text_editor:patch` instructions: Phase=`4-implementation`, Artifact=`story.md`, Persona=`BMad Master (Orchestrator)`
+- [x] **T3.3** Verify no `cat >` heredoc remains; verify `text_editor:patch` instructions present; verify correct Phase/Artifact/Persona values
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `4-implementation`, Active Artifact: `story.md`, Persona: `BMad Master (Orchestrator)`
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/4-implementation/dev-story/checklist.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/4-implementation/dev-story/checklist.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/4-implementation/dev-story/checklist.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, mechanical replacement)
+
+---
+
+### T4: Fix A8 — quick-spec/workflow.md
+- [x] **T4.1** Read `skills/bmad-bmm/workflows/bmad-quick-flow/quick-spec/workflow.md` lines 73–100 to confirm exact BEFORE text
+- [x] **T4.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 79–93) with `text_editor:patch` instructions: Phase=`4-implementation`, Artifact=`quick-spec.md`, Persona=`BMad Master (Orchestrator)`
+- [x] **T4.3** Verify no `cat >` heredoc remains; verify `text_editor:patch` instructions present; verify correct Phase/Artifact/Persona values
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `4-implementation`, Active Artifact: `quick-spec.md`, Persona: `BMad Master (Orchestrator)`
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/bmad-quick-flow/quick-spec/workflow.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/bmad-quick-flow/quick-spec/workflow.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/bmad-quick-flow/quick-spec/workflow.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, mechanical replacement)
+
+---
+
+## Phase 2: Fix A+B — Dual-change Files (4 tasks, parallel after T0)
+
+---
+
+### T5: Fix A1+B2 — step-06-complete.md (Product Brief)
+- [x] **T5.1** Read `skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md` lines 155–185 to confirm exact BEFORE text for both Fix A and Fix B
+- [x] **T5.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 162–176) with `text_editor:patch` instructions: Phase=`2-planning`, Artifact=`product-brief.md`, Persona=`BMad Master (Orchestrator)` (Fix A1)
+- [x] **T5.3** Prefix celebration text at line 180 with `**Display to user (do NOT write to any file):**` (Fix B2)
+- [x] **T5.4** Verify no `cat >` heredoc; verify `text_editor:patch` instructions; verify display-only prefix; verify correct Phase/Artifact/Persona
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `2-planning`, Active Artifact: `product-brief.md`, Persona: `BMad Master (Orchestrator)`
+- Celebration line has `**Display to user (do NOT write to any file):**` prefix
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md
+grep 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, two targeted edits)
+
+---
+
+### T6: Fix A2+B3 — step-12-complete.md (PRD)
+- [x] **T6.1** Read `skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md` lines 117–147 to confirm exact BEFORE text for both Fix A and Fix B
+- [x] **T6.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 124–138) with `text_editor:patch` instructions: Phase=`2-planning`, Artifact=`prd.md`, Persona=`BMad Master (Orchestrator)` (Fix A2)
+- [x] **T6.3** Prefix celebration text at line 142 with `**Display to user (do NOT write to any file):**` (Fix B3)
+- [x] **T6.4** Verify no `cat >` heredoc; verify `text_editor:patch` instructions; verify display-only prefix; verify correct Phase/Artifact/Persona
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `2-planning`, Active Artifact: `prd.md`, Persona: `BMad Master (Orchestrator)`
+- Celebration line has `**Display to user (do NOT write to any file):**` prefix
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md
+grep 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, two targeted edits)
+
+---
+
+### T7: Fix A3+B4 — step-08-complete.md (Architecture)
+- [x] **T7.1** Read `skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md` lines 69–100 to confirm exact BEFORE text for both Fix A and Fix B
+- [x] **T7.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 76–90) with `text_editor:patch` instructions: Phase=`3-solutioning`, Artifact=`architecture.md`, Persona=`BMad Master (Orchestrator)` (Fix A3)
+- [x] **T7.3** Prefix announcement text at line 94 with `**Display to user (do NOT write to any file):**` (Fix B4)
+- [x] **T7.4** Verify no `cat >` heredoc; verify `text_editor:patch` instructions; verify display-only prefix; verify correct Phase/Artifact/Persona
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `3-solutioning`, Active Artifact: `architecture.md`, Persona: `BMad Master (Orchestrator)`
+- Announcement line has `**Display to user (do NOT write to any file):**` prefix
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md
+grep 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, two targeted edits)
+
+---
+
+### T8: Fix A7+B5 — step-04-final-validation.md (Epics & Stories)
+- [x] **T8.1** Read `skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md` lines 155–185 to confirm exact BEFORE text for both Fix A and Fix B
+- [x] **T8.2** Replace `## Workflow Completion — State Write (MANDATORY)` section (lines 162–176) with `text_editor:patch` instructions: Phase=`4-implementation`, Artifact=`epics.md`, Persona=`BMad Master (Orchestrator)` (Fix A7)
+- [x] **T8.3** Prefix announcement text at line 180 with `**Display to user (do NOT write to any file):**` (Fix B5)
+- [x] **T8.4** Verify no `cat >` heredoc; verify `text_editor:patch` instructions; verify display-only prefix; verify correct Phase/Artifact/Persona
+
+**Acceptance:**
+- No `cat >` heredoc in file
+- Has `text_editor:patch` with `patch_text` instructions
+- Phase: `4-implementation`, Active Artifact: `epics.md`, Persona: `BMad Master (Orchestrator)`
+- Announcement line has `**Display to user (do NOT write to any file):**` prefix
+
+**Verification:**
+~~~bash
+grep -c 'cat >.*STATEEOF' skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md  # → 0
+grep -c 'text_editor:patch' skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md  # → ≥1
+grep 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md
+grep 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md
+~~~
+
+**Dependencies:** T0
+**Scope:** XS (1 file, two targeted edits)
+
+---
+
+### Checkpoint A: Fix A Complete
+~~~bash
+cd /a0/usr/projects/a0_bmad_method
+# Zero cat> heredocs across all 8 files
+grep -rl 'cat >.*STATEEOF' skills/bmad-bmm/workflows/ && echo 'FAIL: heredocs remain' || echo 'OK: all heredocs removed'
+# Zero $(date literals
+grep -r '\$\(date' skills/bmad-bmm/workflows/ --include='*.md' && echo 'FAIL: $(date) literals remain' || echo 'OK: no $(date) literals'
+# All 8 files have text_editor:patch
+for f in \
+  skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md \
+  skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md \
+  skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md \
+  skills/bmad-bmm/workflows/2-plan-workflows/create-ux-design/steps/step-14-complete.md \
+  skills/bmad-bmm/workflows/4-implementation/sprint-planning/checklist.md \
+  skills/bmad-bmm/workflows/4-implementation/dev-story/checklist.md \
+  skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md \
+  skills/bmad-bmm/workflows/bmad-quick-flow/quick-spec/workflow.md; do
+  grep -q 'text_editor:patch' "$f" && echo "OK: $f" || echo "FAIL: $f"
 done
-```
+# All 8 files reset persona
+grep -rl 'BMad Master (Orchestrator)' skills/bmad-bmm/workflows/ | wc -l  # → 8
+~~~
 
 ---
 
-## Bundle 3: CIS Persona Removal [P1] — Effort: S-M (0.5-1 day)
+### T9: Fix B1 — bmad-agent-shared.md (Global Celebration Guard)
+- [x] **T9.1** Read `prompts/bmad-agent-shared.md` lines 180–190 to confirm line 187 contains `Update state after phase transitions`
+- [x] **T9.2** Insert new line after line 187: `- **Never write celebration/summary files**: When a workflow announces completion or says "Congratulations", DISPLAY the message to the user in your response text. Do NOT create any summary, celebration, or announcement files on disk. The only file writes allowed are the explicit artifact paths and state updates specified in the workflow.`
+- [x] **T9.3** Verify new line present after the `Update state after phase transitions` line
 
-- [x] 3.1 Update CIS agent.yaml files — replace named personas with upstream generic titles
-  - Acceptance: No CIS agent.yaml contains named personas; titles match upstream generic titles; icons updated (design-thinking gets target, presentation gets framed-picture)
-  - Verify: `grep -r 'Victor\|Dr. Quinn\|Maya\|Carson\|Sophia\|Caravaggio' agents/bmad-*/ || echo 'OK: All CIS personas removed'`
-  - Files: `agents/bmad-innovation/agent.yaml`, `agents/bmad-problem-solver/agent.yaml`, `agents/bmad-design-thinking/agent.yaml`, `agents/bmad-brainstorming-coach/agent.yaml`, `agents/bmad-storyteller/agent.yaml`, `agents/bmad-presentation/agent.yaml`
+**Acceptance:**
+- `prompts/bmad-agent-shared.md` contains `**Never write celebration/summary files**` rule
+- Rule appears after the `Update state after phase transitions` line in "File and Artifact Handling" section
 
-- [x] 3.2 Update CIS prompt files — remove persona narrative, use functional descriptions
-  - Acceptance: All 6 CIS agents role.md, specifics.md, communication_additions.md updated to generic functional style
-  - Verify: `grep -r 'Victor\|Dr. Quinn\|Maya\|Carson\|Sophia\|Caravaggio' agents/bmad-innovation/ agents/bmad-problem-solver/ agents/bmad-design-thinking/ agents/bmad-brainstorming-coach/ agents/bmad-storyteller/ agents/bmad-presentation/ || echo 'OK'`
-  - Files: 6x `agents/bmad-{agent}/prompts/agent.system.main.role.md`, 6x `agents/bmad-{agent}/prompts/agent.system.main.specifics.md`, 6x `agents/bmad-{agent}/prompts/agent.system.main.communication_additions.md`
+**Verification:**
+~~~bash
+grep -A1 'Update state after phase transitions' prompts/bmad-agent-shared.md | grep 'Never write celebration'
+grep -c 'Never write celebration/summary files' prompts/bmad-agent-shared.md  # → 1
+~~~
 
-- [x] 3.3 Update CIS agent references in other files
-  - Acceptance: CIS agents reference files, module.yaml, teams, seed-knowledge all updated; no persona name leaks
-  - Verify: `grep -r 'Victor\|Dr. Quinn\|Maya\|Carson\|Sophia\|Caravaggio' skills/bmad-cis/ skills/bmad-init/seed-knowledge/ || echo 'OK'`
-  - Files: `skills/bmad-cis/agents/*.md`, `skills/bmad-cis/module.yaml`, `skills/bmad-cis/teams/`, `skills/bmad-init/seed-knowledge/`
-
----
-
-## Phase 2: Consolidation + Fixes
+**Dependencies:** T0
+**Scope:** XS (1 file, 1 line insertion)
 
 ---
 
-## Bundle 2: Agent Consolidation [P1] — Effort: M (1 day)
-
-- [x] 2.1 Remove bmad-sm agent directory
-  - Acceptance: agents/bmad-sm/ does not exist; Amelia customize.toml includes SP, SS, CS, ER menus; module.yaml updated skill:sm to skill:dev
-  - Verify: `ls agents/bmad-sm 2>&1 | grep 'No such file'`
-  - Files: DELETE `agents/bmad-sm/`, UPDATE `agents/bmad-dev/customize.toml`, UPDATE `skills/bmad-bmm/module.yaml`, UPDATE `agents/bmad-dev/prompts/agent.system.main.specifics.md`, UPDATE `helpers/bmad_status_core.py`
-
-- [x] 2.2 Remove bmad-qa agent directory
-  - Acceptance: agents/bmad-qa/ does not exist; Amelia customize.toml includes QA menu; test-tube icon collision resolved
-  - Verify: `ls agents/bmad-qa 2>&1 | grep 'No such file'`
-  - Files: DELETE `agents/bmad-qa/`, UPDATE `agents/bmad-dev/customize.toml`, UPDATE `skills/bmad-bmm/module.yaml`, UPDATE `helpers/bmad_status_core.py`
-
-- [x] 2.3 Remove bmad-quick-dev agent directory
-  - Acceptance: agents/bmad-quick-dev/ does not exist; Amelia customize.toml includes QD menu; menu-code QQ changed to QD
-  - Verify: `ls agents/bmad-quick-dev 2>&1 | grep 'No such file' && grep -r 'QQ' skills/bmad-bmm/module.yaml && echo 'FAIL: QQ still present' || echo 'OK: QQ removed'`
-  - Files: DELETE `agents/bmad-quick-dev/`, UPDATE `agents/bmad-dev/customize.toml`, UPDATE `skills/bmad-bmm/module.yaml`, UPDATE `helpers/bmad_status_core.py`
-
-- [x] 2.4 Add missing menus to Amelia customize.toml
-  - Acceptance: Amelia customize.toml has SP, SS, VS, CS, DS, CR, QA, CC, ER, CK, QD, QS menus (12 total)
-  - Verify: `grep -c '\[\[agent\.menu\]\]' agents/bmad-dev/customize.toml`
-  - Files: `agents/bmad-dev/customize.toml`
-
-- [x] 2.5 Update bmad-master role.md — remove static agent table
-  - Acceptance: No static 19-row agent table; replaced with condensed routing guidance using dynamic list; agent count references updated to 18
-  - Verify: `grep -c '|.*|.*|' agents/bmad-master/prompts/agent.system.main.role.md`
-  - Files: `agents/bmad-master/prompts/agent.system.main.role.md`
-
-- [x] 2.6 Update agent roster in knowledge/config files
-  - Acceptance: bmad_status_core.py AGENT_NAMES has no bmad-sm, bmad-qa, bmad-quick-dev; teams updated; sm.md removed or merged
-  - Verify: `grep -E 'bmad-sm|bmad-qa|bmad-quick-dev' helpers/bmad_status_core.py && echo 'FAIL' || echo 'OK'`
-  - Files: `helpers/bmad_status_core.py`, `skills/bmad-bmm/agents/sm.md`, teams CSV files
-
-### Checkpoint B: After Bundle 2
-```
-ls agents/bmad-sm agents/bmad-qa agents/bmad-quick-dev 2>&1 | grep 'No such file'
-python -m pytest tests/ -v
-```
+### Checkpoint B: Fix B Complete
+~~~bash
+# Global guard present
+grep -c 'Never write celebration/summary files' prompts/bmad-agent-shared.md  # → 1
+# All 4 display-only prefixes present
+grep -c 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/1-analysis/create-product-brief/steps/step-06-complete.md  # → 1
+grep -c 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/2-plan-workflows/create-prd/steps-c/step-12-complete.md  # → 1
+grep -c 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md  # → 1
+grep -c 'Display to user (do NOT write to any file)' skills/bmad-bmm/workflows/3-solutioning/create-epics-and-stories/steps/step-04-final-validation.md  # → 1
+~~~
 
 ---
 
-## Bundle 4: Quick Fixes [P1/P2] — Effort: S (2-4 hours)
-
-- [x] 4.1 Fix Morgan icon (construction → package)
-  - Acceptance: agents/bmad-module-builder/agent.yaml icon is package; construction is Winston-only
-  - Verify: `grep 'package-icon' agents/bmad-module-builder/agent.yaml`
-  - Files: `agents/bmad-module-builder/agent.yaml`, possibly `agents/bmad-module-builder/prompts/agent.system.main.role.md`
-
-- [x] 4.2 Fix Sally communication style (painter to filmmaker metaphor)
-  - Acceptance: Sally role.md uses filmmaker pitching the scene metaphor
-  - Verify: `grep -i 'filmmaker' agents/bmad-ux-designer/prompts/agent.system.main.role.md`
-  - Files: `agents/bmad-ux-designer/prompts/agent.system.main.role.md`, possibly `agents/bmad-ux-designer/agent.yaml`
-
-- [x] 4.3 Add US menu to Paige customize.toml
-  - Acceptance: Paige customize.toml includes US (Update Standards) menu code
-  - Verify: `grep 'code = "US"' agents/bmad-tech-writer/customize.toml`
-  - Files: `agents/bmad-tech-writer/customize.toml`
-
-- [x] 4.4 Add _bmad/custom/ directory creation to init script
-  - Acceptance: Init script creates _bmad/custom/ directory; idempotent
-  - Verify: `bash skills/bmad-init/scripts/bmad-init.sh /tmp/test-bmad-project && ls -la /tmp/test-bmad-project/.a0proj/_bmad/custom/`
-  - Files: `skills/bmad-init/scripts/bmad-init.sh`
-
-- [x] 4.5 Document QA/VS menu code collisions as intentional module-scoping
-  - Acceptance: Comments in module.yaml documenting intentional QA/VS code duplication; routing manifest correctly filters by module
-  - Verify: `grep -A2 'Module-scoped' skills/bmad-bmm/module.yaml skills/bmad-bmb/module.yaml`
-  - Files: `skills/bmad-bmm/module.yaml`, `skills/bmad-bmb/module.yaml`
-
-### Checkpoint C: After Bundles 2-4
-```
-python -m pytest tests/ -v
-bash skills/bmad-init/scripts/bmad-init.sh /tmp/test-bmad-project
-ls -la /tmp/test-bmad-project/.a0proj/_bmad/custom/
-```
+## Phase 3: Fix C (after Fix A)
 
 ---
 
-## Phase 3: Test Updates
+### T10: Fix C1 — communication_additions.md (Post-Delegation Verification)
+- [x] **T10.1** Read `agents/bmad-master/prompts/agent.system.main.communication_additions.md` lines 150–165 to confirm line 161 contains `Everything else → mandatory routing lookup → delegate to correct specialist profile.`
+- [x] **T10.2** Insert after line 161 the `## Post-Delegation Verification (MANDATORY)` section with 3 steps:
+  1. Verify state integrity: Read `02-bmad-state.md`, confirm `- Persona: BMad Master (Orchestrator)` present. If corrupted, fix immediately.
+  2. Verify artifact exists: Check declared artifact file exists at configured output path and is non-empty.
+  3. Report results to user: Confirm what was created and where, or report any verification failures.
+- [x] **T10.3** Verify section header and all 3 verification steps present
+
+**Acceptance:**
+- `communication_additions.md` contains `## Post-Delegation Verification (MANDATORY)` section header
+- Section has all 3 steps: state integrity, artifact exists, report results
+- Section appears after `Everything else → mandatory routing lookup` line
+
+**Verification:**
+~~~bash
+grep -c 'Post-Delegation Verification (MANDATORY)' agents/bmad-master/prompts/agent.system.main.communication_additions.md  # → 1
+grep -c 'Verify state integrity' agents/bmad-master/prompts/agent.system.main.communication_additions.md  # → 1
+grep -c 'Verify artifact exists' agents/bmad-master/prompts/agent.system.main.communication_additions.md  # → 1
+grep -c 'Report results to user' agents/bmad-master/prompts/agent.system.main.communication_additions.md  # → 1
+~~~
+
+**Dependencies:** T1–T8 (Fix A must be complete — verification targets patched files)
+**Scope:** XS (1 file, 1 section insertion)
 
 ---
 
-## Bundle 5: Test Updates and Final Verification [P1] — Effort: M (0.5-1 day)
-
-- [ ] 5.1 Update existing tests for YAML
-  - Acceptance: test_extension_80.py uses YAML fixtures; test_core_csv_schema.py renamed to test_core_yaml_schema.py; test_constants_consolidation.py updated; test_dead_code.py CSV checks removed
-  - Verify: `python -m pytest tests/test_extension_80.py tests/test_core_yaml_schema.py tests/test_constants_consolidation.py tests/test_dead_code.py -v`
-  - Files: `tests/test_extension_80.py`, `tests/test_core_csv_schema.py` → `tests/test_core_yaml_schema.py`, `tests/test_constants_consolidation.py`, `tests/test_dead_code.py`
-
-- [ ] 5.2 Add new tests (test_yaml_routing, test_agent_consolidation, test_cis_personas)
-  - Acceptance: test_yaml_routing.py covers YAML parsing, phase filtering, menu lookup, mtime caching; test_agent_consolidation.py covers SM/QA/QD removal, Amelia menus, QD code; test_cis_personas.py covers no named personas, generic titles, no icon collisions
-  - Verify: `python -m pytest tests/test_yaml_routing.py tests/test_agent_consolidation.py tests/test_cis_personas.py -v`
-  - Files: `tests/test_yaml_routing.py` (new), `tests/test_agent_consolidation.py` (new), `tests/test_cis_personas.py` (new)
-
-- [ ] 5.3 Full integration test — init script, routing manifest, A2A live test
-  - Acceptance: bmad-init.sh on temp dir produces correct state; routing manifest generates correctly from YAML; phase transitions work; A2A live test on VPS passes; test count >= 300; flake8 clean
-  - Verify: `python -m pytest tests/ -v && python -m flake8 api/ helpers/ extensions/ --max-line-length 100`
-  - Files: N/A (verification only, deploying to VPS)
-
-### Checkpoint D: After Bundle 5
-```
-python -m pytest tests/ -v  # count >= 300, all pass
-python -m flake8 api/ helpers/ extensions/ --max-line-length 100
-```
+### Checkpoint C: Fix C Complete
+~~~bash
+grep -c 'Post-Delegation Verification (MANDATORY)' agents/bmad-master/prompts/agent.system.main.communication_additions.md  # → 1
+~~~
 
 ---
 
-## Phase 4: P3 Structural Alignment
+## Phase 4: Regression + Commit
 
 ---
 
-## Bundle 6: P3 Structural Alignment [P3] — Effort: L (4-6 days)
+### T11: Regression Tests
+- [x] **T11.1** Inverse pre-flight: grep all 8 files — zero `cat >` heredocs remain
+- [x] **T11.2** Inverse pre-flight: grep all 8 files — zero `$(date` literals remain
+- [x] **T11.3** Full pytest suite passes
+- [x] **T11.4** Manual verification checklist from SPEC.md §Manual Verification Checklist
+- [x] **T11.5** `git diff --stat` shows exactly 10 files changed
 
-### 6A: 8-Step Activation Sequence
+**Acceptance:**
+- Zero `cat >` heredocs in any of 8 target files
+- Zero `$(date` literal strings in any workflow file
+- All existing pytest tests pass without modification
+- `bmad_status_core.py` regex patterns still match
+- `git diff --stat` shows exactly 10 files
 
-- [x] 6.1 Rewrite bmad-agent-shared.md activation section (8-step sequence)
-  - Acceptance: Activation section lists all 8 steps in order; steps 1,2,5,7 are new; steps 3,4,6,8 preserved from current
-  - Verify: `grep -c '### Step' prompts/bmad-agent-shared.md` (should show 8 activation steps)
-  - Files: `prompts/bmad-agent-shared.md`
+**Verification:**
+~~~bash
+cd /a0/usr/projects/a0_bmad_method
+# Inverse pre-flight
+grep -rl 'cat >.*STATEEOF' skills/bmad-bmm/workflows/ && echo 'FAIL' || echo 'OK: no heredocs'
+grep -r '\$\(date' skills/bmad-bmm/workflows/ --include='*.md' && echo 'FAIL' || echo 'OK: no date literals'
+# Full test suite
+python -m pytest tests/ -v --tb=short 2>&1 | tail -10
+# File count
+git diff --stat | tail -1
+~~~
 
-- [x] 6.2 Add resolve_customization first-call instructions per agent
-  - Acceptance: Shared prompt instructs agent to run resolve_customization.py as first tool call; template includes skill-root variable
-  - Verify: `grep 'resolve_customization' prompts/bmad-agent-shared.md`
-  - Files: `prompts/bmad-agent-shared.md`
-
-- [x] 6.3 Add persistent_facts processing instructions
-  - Acceptance: Shared prompt includes step for processing persistent_facts array; file: prefix handling documented with glob support; literal facts adopted as context
-  - Verify: `grep -A5 'persistent_facts' prompts/bmad-agent-shared.md`
-  - Files: `prompts/bmad-agent-shared.md`
-
-- [x] 6.4 Add prepend/append hooks processing instructions
-  - Acceptance: Prepend step processing before persona adoption; append step processing after greeting before menu; empty arrays result in no-op
-  - Verify: `grep 'activation_steps_prepend\|activation_steps_append' prompts/bmad-agent-shared.md`
-  - Files: `prompts/bmad-agent-shared.md`
-
-### 6B: project-context.md Loading
-
-- [x] 6.5 Standardize project-context.md loading in implementation workflows
-  - Acceptance: All 8 implementation workflow step-01 files include project-context.md pre-step; pre-step is idempotent
-  - Verify: `grep -l 'project-context' skills/bmad-bmm/workflows/*/steps/step-01-init.md | wc -l`
-  - Files: `skills/bmad-bmm/workflows/dev-story/steps/step-01-init.md`, `skills/bmad-bmm/workflows/create-story/steps/step-01-init.md`, `skills/bmad-bmm/workflows/code-review/steps/step-01-init.md`, `skills/bmad-bmm/workflows/sprint-planning/steps/step-01-init.md`, `skills/bmad-bmm/workflows/correct-course/steps/step-01-init.md`, `skills/bmad-bmm/workflows/quick-dev/steps/step-01-init.md`, `skills/bmad-bmm/workflows/quick-spec/steps/step-01-init.md`, `skills/bmad-bmm/workflows/create-architecture/steps/step-01-init.md`
-
-### 6C: File-Based Sidecar Memory
-
-- [x] 6.6 Add file-based sidecar memory directories to init script
-  - Acceptance: Init script creates _bmad/_memory/ with 16 agent sidecar directories; each has memories.md; idempotent
-  - Verify: `bash skills/bmad-init/scripts/bmad-init.sh /tmp/test-bmad-project && ls /tmp/test-bmad-project/.a0proj/_bmad/_memory/ | wc -l`
-  - Files: `skills/bmad-init/scripts/bmad-init.sh`
-
-- [x] 6.7 Add sidecar loading to activation sequence
-  - Acceptance: Shared prompt includes sidecar loading between facts (step 5) and greeting (step 6); agent reads all .md files from sidecar directory; missing files handled gracefully
-  - Verify: `grep -A5 'sidecar' prompts/bmad-agent-shared.md`
-  - Files: `prompts/bmad-agent-shared.md`
-
-- [x] 6.8 Add sidecar writing instructions to agent prompts
-  - Acceptance: Shared prompt includes sidecar writing instructions; triggers at natural breakpoints; format documented (markdown with date/topic headers); agents append not overwrite
-  - Verify: `grep -A5 'Sidecar Memory Writing' prompts/bmad-agent-shared.md`
-  - Files: `prompts/bmad-agent-shared.md`
-
-- [x] 6.9 Create sidecar import skill for upstream migration
-  - Acceptance: skills/bmad-sidecar-import/SKILL.md exists; import script copies .md files from upstream sidecar directories; idempotent
-  - Verify: `ls skills/bmad-sidecar-import/SKILL.md skills/bmad-sidecar-import/scripts/import-sidecars.sh`
-  - Files: `skills/bmad-sidecar-import/SKILL.md` (new), `skills/bmad-sidecar-import/scripts/import-sidecars.sh` (new)
-
-### 6D: P3 Tests
-
-- [x] 6.10 Add tests for activation sequence, sidecar, project-context loading
-  - Acceptance: test_activation_sequence.py verifies 8 steps, resolve_customization, persistent_facts, prepend/append, sidecar loading; test_sidecar_memory.py verifies 16 directories, memories.md, readable markdown; test_project_context_loading.py verifies persistent_facts step, workflow pre-steps, customize.toml references; test count >= 310
-  - Verify: `python -m pytest tests/test_activation_sequence.py tests/test_sidecar_memory.py tests/test_project_context_loading.py -v`
-  - Files: `tests/test_activation_sequence.py` (new), `tests/test_sidecar_memory.py` (new), `tests/test_project_context_loading.py` (new)
-
-### Checkpoint E: After Bundle 6
-```
-python -m pytest tests/ -v  # count >= 310, all pass
-bash skills/bmad-init/scripts/bmad-init.sh /tmp/test-bmad-project
-ls -la /tmp/test-bmad-project/.a0proj/_bmad/custom/
-ls -la /tmp/test-bmad-project/.a0proj/_bmad/_memory/
-grep -c '### Step' prompts/bmad-agent-shared.md  # should be 8+
-```
+**Dependencies:** T1–T10 (all fixes applied)
+**Scope:** S (verification only, no code changes)
 
 ---
 
-## Final Gate: A2A Live Test + Deploy
+### T12: Git Commits
+- [x] **T12.1** `git add` all Fix A files (8 files), commit: `fix: replace cat> heredocs with text_editor:patch (Bug 1, 3, Bonus)`
+- [x] **T12.2** `git add` all Fix B files (5 changes in 5 files), commit: `fix: add celebration message display-only guards (Bug 2)`
+- [x] **T12.3** `git add` Fix C file (1 file), commit: `fix: add post-delegation verification to BMad Master (Bug 4)`
+- [x] **T12.4** Verify `git log --oneline -3` shows 3 new commits
 
-- [ ] Deploy to VPS testing instance
-  - Verify: `ssh -i /a0/usr/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@162.19.152.199 'docker exec agent-zero-testing bash -c "cd /a0/usr/projects/a0_bmad_method && git pull origin develop"'`
+**Acceptance:**
+- 3 commits, one per fix layer (A, B, C)
+- Each commit message references the bugs it fixes
+- `git log --oneline -3` shows the 3 new commits
 
-- [ ] Merge develop to main (/ship)
-  - Verify: All 33 subtasks checked off; test count >= 310; A2A live test passes
+**Verification:**
+~~~bash
+cd /a0/usr/projects/a0_bmad_method
+git log --oneline -3
+git diff --stat HEAD~3  # should show 10 files total
+~~~
+
+**Dependencies:** T11 (tests pass)
+**Scope:** XS (git operations only)
 
 ---
 
 ## Summary
 
-| Bundle | Tasks | Status |
-|--------|-------|--------|
-| 1: CSV to YAML [P0] | 1.1-1.6 (6) | [] |
-| 2: Agent Consolidation [P1] | 2.1-2.6 (6) | [] |
-| 3: CIS Persona Removal [P1] | 3.1-3.3 (3) | [] |
-| 4: Quick Fixes [P1/P2] | 4.1-4.5 (5) | [] |
-| 5: Test Updates [P1] | 5.1-5.3 (3) | [] |
-| 6: P3 Structural [P3] | 6.1-6.10 (10) | [] |
-| **Total** | **33 subtasks** | |
+| Task | Fix | File(s) | Scope | Depends on |
+|------|-----|---------|-------|------------|
+| T0 | Pre-flight | — | XS | — |
+| T1 | A4 | step-14-complete.md | XS | T0 |
+| T2 | A5 | sprint-planning/checklist.md | XS | T0 |
+| T3 | A6 | dev-story/checklist.md | XS | T0 |
+| T4 | A8 | quick-spec/workflow.md | XS | T0 |
+| T5 | A1+B2 | step-06-complete.md | XS | T0 |
+| T6 | A2+B3 | step-12-complete.md | XS | T0 |
+| T7 | A3+B4 | step-08-complete.md | XS | T0 |
+| T8 | A7+B5 | step-04-final-validation.md | XS | T0 |
+| T9 | B1 | bmad-agent-shared.md | XS | T0 |
+| T10 | C1 | communication_additions.md | XS | T1–T8 |
+| T11 | Regression | — | S | T1–T10 |
+| T12 | Commits | — | XS | T11 |
+
+**Total:** 13 tasks, 14 changes, 10 unique files. All XS except T11 (S).
