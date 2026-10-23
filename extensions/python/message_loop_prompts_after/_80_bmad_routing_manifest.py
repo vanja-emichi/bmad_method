@@ -77,14 +77,24 @@ def _sanitize_glob_pattern(pattern: str) -> str:
 
 
 def _validate_path_in_project(resolved: Path, project_root: Path | None = None) -> bool:
-    """Ensure resolved path does not contain path traversal sequences.
-    Prevents alias-based directory traversal attacks (e.g. '../../../etc/passwd').
+    """Ensure a resolved path stays inside the project root.
+
+    Rejects any '..' sequence (defense in depth) and, when ``project_root`` is
+    provided, also rejects paths that escape that root after canonicalization —
+    covering absolute paths, symlink targets, and alias entries pointing outside
+    the project (e.g. '../../../etc/passwd').
     """
     try:
-        if '..' in str(resolved):
+        raw = str(resolved)
+        if '..' in raw:
             return False
-        return True
-    except (ValueError, OSError):
+        if project_root is None:
+            return True
+        root = Path(project_root).resolve()
+        candidate = Path(resolved)
+        target = (candidate if candidate.is_absolute() else root / candidate).resolve()
+        return target.is_relative_to(root)
+    except (ValueError, OSError, RuntimeError):
         return False
 
 BMAD_MASTER_PROFILE = "bmad-master"
@@ -147,6 +157,18 @@ def _resolve_state_file(agent) -> Path | None:
     except Exception:
         pass
 
+    return None
+
+
+def _resolve_project_root(agent) -> Path | None:
+    """Resolve the active project folder for containment checks."""
+    try:
+        from helpers import projects
+        project_name = projects.get_context_project_name(agent.context)
+        if project_name:
+            return Path(projects.get_project_folder(project_name)).resolve()
+    except Exception:
+        pass
     return None
 
 
@@ -249,7 +271,7 @@ def _parse_alias_map(config_path: Path) -> dict:
     return alias_map
 
 
-def _resolve_dir(location_raw: str, alias_map: dict) -> "Path | None":
+def _resolve_dir(location_raw: str, alias_map: dict, project_root: Path | None = None) -> "Path | None":
     """Resolve output-location alias → absolute Path.
     Handles pipe-separated values (uses first segment).
     AC-02, AC-05: returns None if alias missing (graceful degradation).
@@ -261,13 +283,13 @@ def _resolve_dir(location_raw: str, alias_map: dict) -> "Path | None":
     if not resolved:
         return None
     p = Path(resolved)
-    if not _validate_path_in_project(p):
+    if not _validate_path_in_project(p, project_root):
         log.warning("Rejected alias path outside project: %s", resolved)
         return None
     return p
 
 
-def _scan_artifact_existence(yaml_files: list, alias_map: dict) -> dict:
+def _scan_artifact_existence(yaml_files: list, alias_map: dict, project_root: Path | None = None) -> dict:
     """Scan filesystem for required phase-gating artifacts.
     AC-02, AC-03: glob output dirs, return phase → (found: bool, note: str).
     Phase is complete if ANY required=true artifact for that phase is found.
@@ -295,7 +317,7 @@ def _scan_artifact_existence(yaml_files: list, alias_map: dict) -> dict:
                 if not output_location:
                     continue
                 # AC-05: skip row if alias cannot be resolved
-                resolved_dir = _resolve_dir(output_location, alias_map)
+                resolved_dir = _resolve_dir(output_location, alias_map, project_root)
                 if not resolved_dir or not resolved_dir.exists():
                     continue
                 # AC-02: glob for artifact
@@ -472,9 +494,12 @@ class BmadRoutingManifest(Extension):
             # ── Artifact completion detection (AC-01 through AC-06) ────────────
             try:
                 config_path = state_path.parent / "01-bmad-config.md"  # AC-01
+                project_root = _resolve_project_root(self.agent)
                 if config_path.exists():
                     alias_map = _parse_alias_map(config_path)  # AC-06: cached
-                    phase_map = _scan_artifact_existence(yaml_files, alias_map)  # AC-02, AC-03
+                    phase_map = _scan_artifact_existence(
+                        yaml_files, alias_map, project_root
+                    )  # AC-02, AC-03
                     completed_text = _build_completed_phases_text(phase_map)  # AC-04
                     manifest_prompt += f"\n\n{completed_text}"
                     staleness_text = _build_staleness_warnings(alias_map)

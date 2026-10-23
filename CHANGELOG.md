@@ -1,3 +1,31 @@
+## [Unreleased]
+
+### Security Fixes
+
+- **Stored XSS in quality-scanner HTML report** (`skills/bmad-bmb/quality-scanner/scripts/generate-html-report.py`):
+  `executive_summary.grade` was interpolated raw into a CSS class and into `innerHTML`,
+  allowing a crafted `report-data.json` to inject markup. Now sanitized with `sanitizeGrade()`
+  (A–F only) for the class and escaped with `esc()` for the text node — matching the
+  already-hardened sibling generators in `workflows/agent/` and `workflows/workflow/`.
+- **Path containment bypass in routing manifest** (`extensions/python/message_loop_prompts_after/_80_bmad_routing_manifest.py`):
+  `_validate_path_in_project()` only substring-checked for `..` and ignored its `project_root`
+  argument, so absolute paths and symlink targets from the project alias table could escape
+  the project and be globbed. It now canonicalizes with `Path.resolve()` and enforces
+  `is_relative_to(project_root)`; `project_root` is resolved from the active project context
+  and threaded through `_resolve_dir()` and `_scan_artifact_existence()`.
+- **Unpinned runtime package fetching** (`skills/bmad-bmb/workflows/*/scripts/scan-scripts.py`):
+  external linters were fetched and executed unpinned via `uv run ruff`,
+  `uv run --with shellcheck-py` and `npx --yes @biomejs/biome`. Versions are now pinned
+  (`ruff==0.17.2`, `shellcheck-py==0.11.0.1`, `@biomejs/biome@2.6.2`) and the remediation
+  hints in the reported findings name the exact pinned versions.
+
+### Tests
+
+- Added containment tests to `tests/test_validate_path_security.py` covering absolute-path
+  escapes, symlink escapes, and `..` traversal relative to a real project root.
+
+---
+
 # Changelog
 
 All notable changes to the BMAD Method plugin are documented here.

@@ -644,6 +644,13 @@ h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
 const DATA = JSON.parse(document.getElementById('report-data').textContent);
 const selected = new Set();
 
+function sanitizeGrade(g) {
+  // Only allow valid grade letters A-F (including +/- suffixes)
+  if (!g || typeof g !== 'string') return 'N/A';
+  const sanitized = g.replace(/[^A-Fa-f+\-]/g, '');
+  return sanitized.length > 0 ? sanitized : 'N/A';
+}
+
 function init() {
   const m = DATA.meta;
   const es = DATA.executive_summary;
@@ -651,7 +658,8 @@ function init() {
   document.getElementById('subtitle').textContent = `${m.skill_path} \u2022 ${m.timestamp.split('T')[0]} \u2022 ${m.scanner_count} scanners`;
 
   // Executive summary
-  let html = `<div class="grade grade-${es.grade}">${es.grade}</div>`;
+  let safeGrade = sanitizeGrade(es.grade);
+  let html = `<div class="grade grade-${safeGrade}">${esc(es.grade)}</div>`;
   html += `<dl class="summary-grid">`;
   html += `<dt>Issues</dt><dd>${es.total_issues} total \u2014 ${es.counts.critical} critical, ${es.counts.high} high, ${es.counts.medium} medium, ${es.counts.low} low</dd>`;
   if (es.enhancement_count) html += `<dt>Enhancements</dt><dd>${es.enhancement_count} opportunities identified</dd>`;

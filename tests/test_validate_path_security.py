@@ -7,6 +7,7 @@ while allowing legitimate paths.
 import sys
 import types
 import unittest
+import tempfile
 from pathlib import Path
 
 # -- Stub Agent Zero runtime modules before importing extension --
@@ -15,6 +16,11 @@ _stub_keys = (
     "helpers.extension", "agent",
 )
 _saved_modules = {k: sys.modules[k] for k in _stub_keys if k in sys.modules}
+
+def tmp_root():
+    """Create a throwaway project root directory."""
+    return tempfile.mkdtemp(prefix="bmad-root-")
+
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_ROOT))
@@ -101,6 +107,41 @@ class TestValidatePathAllowsLegitimate(unittest.TestCase):
     def test_allows_dot_slash_path(self):
         """Path starting './' (current dir) must return True — no '..'."""
         self.assertTrue(_validate_path_in_project(Path("./src/file.py")))
+
+
+class TestValidatePathContainment(unittest.TestCase):
+    """With a project_root, paths escaping that root must be rejected."""
+
+    def setUp(self):
+        self.root = Path(tmp_root()).resolve()
+        (self.root / "planning").mkdir(parents=True, exist_ok=True)
+
+    def test_allows_path_inside_root(self):
+        """A path inside the project root is allowed."""
+        self.assertTrue(
+            _validate_path_in_project(self.root / "planning" / "prd.md", self.root)
+        )
+
+    def test_rejects_absolute_path_outside_root(self):
+        """An absolute path outside the project root must be rejected."""
+        self.assertFalse(
+            _validate_path_in_project(Path("/etc/passwd"), self.root)
+        )
+
+    def test_rejects_symlink_escape(self):
+        """A symlink pointing outside the root must be rejected."""
+        link = self.root / "escape"
+        try:
+            link.symlink_to("/etc", target_is_directory=True)
+        except OSError:
+            self.skipTest("symlinks unsupported on this platform")
+        self.assertFalse(_validate_path_in_project(link / "passwd", self.root))
+
+    def test_rejects_dotdot_relative_to_root(self):
+        """A relative '../../etc' combo must be rejected even with a root."""
+        self.assertFalse(
+            _validate_path_in_project(Path("../outside/file.md"), self.root)
+        )
 
 
 class TestValidatePathEdgeCases(unittest.TestCase):

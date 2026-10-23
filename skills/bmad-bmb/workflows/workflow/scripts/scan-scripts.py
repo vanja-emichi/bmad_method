@@ -68,7 +68,8 @@ def lint_python_ruff(filepath: Path, rel_path: str) -> list[dict]:
         }]
 
     rc, stdout, stderr = _run_command([
-        uv, 'run', 'ruff', 'check', '--output-format', 'json', str(filepath),
+        uv, 'run', '--with', 'ruff==0.17.2', 'ruff', 'check',
+        '--output-format', 'json', str(filepath),
     ])
 
     if rc == -1:
@@ -77,7 +78,7 @@ def lint_python_ruff(filepath: Path, rel_path: str) -> list[dict]:
             'severity': 'high', 'category': 'lint-setup',
             'title': f'Failed to run ruff via uv: {stderr.strip()}',
             'detail': '',
-            'action': 'Ensure uv can install and run ruff: uv run ruff --version',
+            'action': 'Ensure uv can install and run ruff: uv run --with ruff==0.17.2 ruff --version',
         }]
 
     if rc == -2:
@@ -130,7 +131,7 @@ def lint_shell_shellcheck(filepath: Path, rel_path: str) -> list[dict]:
         }]
 
     rc, stdout, stderr = _run_command([
-        uv, 'run', '--with', 'shellcheck-py',
+        uv, 'run', '--with', 'shellcheck-py==0.11.0.1',
         'shellcheck', '--format', 'json', str(filepath),
     ])
 
@@ -140,7 +141,7 @@ def lint_shell_shellcheck(filepath: Path, rel_path: str) -> list[dict]:
             'severity': 'high', 'category': 'lint-setup',
             'title': f'Failed to run shellcheck via uv: {stderr.strip()}',
             'detail': '',
-            'action': 'Ensure uv can install shellcheck-py: uv run --with shellcheck-py shellcheck --version',
+            'action': 'Ensure uv can install shellcheck-py: uv run --with shellcheck-py==0.11.0.1 shellcheck --version',
         }]
 
     if rc == -2:
@@ -197,7 +198,7 @@ def lint_node_biome(filepath: Path, rel_path: str) -> list[dict]:
         }]
 
     rc, stdout, stderr = _run_command([
-        npx, '--yes', '@biomejs/biome', 'lint', '--reporter', 'json', str(filepath),
+        npx, '--yes', '@biomejs/biome@2.6.2', 'lint', '--reporter', 'json', str(filepath),
     ], timeout=60)
 
     if rc == -1:
@@ -206,7 +207,7 @@ def lint_node_biome(filepath: Path, rel_path: str) -> list[dict]:
             'severity': 'high', 'category': 'lint-setup',
             'title': f'Failed to run biome via npx: {stderr.strip()}',
             'detail': '',
-            'action': 'Ensure npx can run biome: npx @biomejs/biome --version',
+            'action': 'Ensure npx can run biome: npx @biomejs/biome@2.6.2 --version',
         }]
 
     if rc == -2:
